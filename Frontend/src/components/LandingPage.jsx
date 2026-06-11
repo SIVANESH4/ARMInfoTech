@@ -12,19 +12,31 @@ export default function LandingPage() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    // Eased mouse target mechanics
+    // Eased coordinates anchor
     const mouse = { x: width / 2, y: height / 2, targetX: width / 2, targetY: height / 2 };
     
-    // Spring physics configuration for spine tracking
+    // Spring nodes setup
     const numPoints = 22; 
     const points = [];
     for (let i = 0; i < numPoints; i++) {
       points.push({ x: width / 2, y: height / 2, vx: 0, vy: 0 });
     }
 
+    // --- UNIFIED CONTROLLER INTERFACES ---
+    const updateTargetCoordinates = (clientX, clientY) => {
+      mouse.targetX = clientX;
+      mouse.targetY = clientY;
+    };
+
     const handleMouseMove = (e) => {
-      mouse.targetX = e.clientX;
-      mouse.targetY = e.clientY;
+      updateTargetCoordinates(e.clientX, e.clientY);
+    };
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length === 0) return;
+      // Prevent standard mobile scroll bounce behavior while playing with the ribbon
+      if (e.cancelable) e.preventDefault(); 
+      updateTargetCoordinates(e.touches[0].clientX, e.touches[0].clientY);
     };
 
     const handleResize = () => {
@@ -32,20 +44,25 @@ export default function LandingPage() {
       height = canvas.height = window.innerHeight;
     };
 
+    // Desktop Listeners
     window.addEventListener('mousemove', handleMouseMove);
+    
+    // Mobile/Tablet Touch Listeners
+    window.addEventListener('touchstart', handleTouchMove, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    
     window.addEventListener('resize', handleResize);
 
+    // --- ANIMATION LOOP ENGINE ---
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      // Dampened easing tracking variables
       mouse.x += (mouse.targetX - mouse.x) * 0.15;
       mouse.y += (mouse.targetY - mouse.y) * 0.15;
 
       points[0].x = mouse.x;
       points[0].y = mouse.y;
 
-      // Update structural ribbon tension values loop
       for (let i = 1; i < numPoints; i++) {
         const p1 = points[i - 1];
         const p2 = points[i];
@@ -78,7 +95,6 @@ export default function LandingPage() {
         ctx.lineJoin = 'round';
         ctx.lineWidth = 140;
 
-        // Dynamic fluid asset lighting matrix anchors
         const gradient = ctx.createRadialGradient(points[3].x, points[3].y, 10, points[3].x, points[3].y, 400);
         gradient.addColorStop(0, 'rgba(249, 115, 22, 0.25)');  
         gradient.addColorStop(0.4, 'rgba(236, 72, 153, 0.15)'); 
@@ -90,7 +106,6 @@ export default function LandingPage() {
         ctx.shadowColor = 'rgba(249, 115, 22, 0.3)';
         ctx.stroke();
 
-        // High gloss inner spec specular pass mapping
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
         for (let i = 1; i < numPoints - 1; i++) {
@@ -109,15 +124,18 @@ export default function LandingPage() {
 
     render();
 
+    // Clean up memory links on unmount
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchstart', handleTouchMove);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
 
   return (
-    <div className="relative w-full h-screen bg-black overflow-hidden">
+    <div className="relative w-full h-screen bg-black overflow-hidden touch-none">
       <canvas 
         ref={canvasRef} 
         className="w-full h-full pointer-events-none mix-blend-screen" 
